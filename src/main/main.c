@@ -1,16 +1,17 @@
-#define GLFW_INCLUDE_NONE
-#include <stdio.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
-void framebuf_callback(GLFWwindow *window, int x, int y)
-{
-	glViewport(0, 0, x, y);
-}
+#include "../renderer/renderer.h"
 
 int main()
 {
-	glfwInit();
+	GLFWwindow *window = init_and_create_window(800, 300, "test");
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	while(!glfwWindowShouldClose(window))
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glfwPollEvents();
+		glfwSwapBuffers(window);
+	}
 
 	glfwTerminate();
 	return 0;
