@@ -1,4 +1,6 @@
 #include "../renderer/renderer.h"
+#include "../utils/utils.h"
+#include <stdlib.h>
 
 int main()
 {

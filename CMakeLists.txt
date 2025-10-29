@@ -16,5 +16,10 @@ add_executable(game)
 
 add_subdirectory(src/main)
 add_subdirectory(src/renderer)
+add_subdirectory(src/utils)
 
 target_link_libraries(game PRIVATE glfw glad)
+
+add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory 
+		   ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:game>/shaders
+		   COMMENT "copying shaders to output")
