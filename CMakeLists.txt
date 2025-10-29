@@ -15,5 +15,6 @@ add_subdirectory(glad)
 add_executable(game)
 
 add_subdirectory(src/main)
+add_subdirectory(src/renderer)
 
 target_link_libraries(game PRIVATE glfw glad)
