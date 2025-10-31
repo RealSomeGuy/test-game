@@ -17,8 +17,9 @@ add_executable(game)
 add_subdirectory(src/main)
 add_subdirectory(src/renderer)
 add_subdirectory(src/utils)
+add_subdirectory(stb_image)
 
-target_link_libraries(game PRIVATE glfw glad)
+target_link_libraries(game PRIVATE glfw glad stb_image)
 target_include_directories(game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory 
