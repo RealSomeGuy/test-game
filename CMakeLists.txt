@@ -22,10 +22,14 @@ add_subdirectory(stb_image)
 target_link_libraries(game PRIVATE glfw glad stb_image)
 target_include_directories(game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory 
-		   ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:game>/shaders
-		   COMMENT "copying shaders to output")
+add_custom_target(shaders ALL COMMAND ${CMAKE_COMMAND} -E copy_directory 
+			${CMAKE_SOURCE_DIR}/shaders
+			${CMAKE_BINARY_DIR}/shaders
+			COMMENT "copying shaders to build dir")
 
-add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory 
-		   ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets
-		   COMMENT "copying assets to output")
+add_custom_target(assets ALL COMMAND ${CMAKE_COMMAND} -E copy_directory 
+			${CMAKE_SOURCE_DIR}/assets
+			${CMAKE_BINARY_DIR}/assets
+			COMMENT "copying assets to build dir")
+
+add_dependencies(game shaders assets)
