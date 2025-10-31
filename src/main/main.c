@@ -17,7 +17,11 @@ int main()
 		//	r	g	b
 			 1.0f,	 0.0f,	 0.0f,
 			 0.0f,	 1.0f,	 0.0f,
-			 0.0f,	 0.0f, 	 1.0f
+			 0.0f,	 0.0f, 	 1.0f,
+		//	s	t
+			1.0f,	0.0f,
+			0.0f,	0.0f,
+			0.5f,	0.5f
 	};
 
 	GLuint vao, vbo;
@@ -36,9 +40,18 @@ int main()
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 9));
 	glEnableVertexAttribArray(1);
 
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 18));
+	glEnableVertexAttribArray(2);
+
 	GLuint program = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
 
+	glActiveTexture(GL_TEXTURE1);
+	GLuint g_tex = create_texture("assets/grass.png");
+
 	glUseProgram(program);
+
+	glUniform1i(0, 1);
+	
 	while(!glfwWindowShouldClose(window))
 	{
 		glClear(GL_COLOR_BUFFER_BIT);

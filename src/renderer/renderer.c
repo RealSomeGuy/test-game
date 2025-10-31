@@ -113,6 +113,9 @@ GLuint create_shader_program(const char *vertex_path, const char *fragment_path)
 		LOG("[PROGRAM LINK ERROR] - %s\n", log);
 	}
 
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+
 	return program;
 }
 
