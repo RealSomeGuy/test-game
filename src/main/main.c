@@ -1,5 +1,6 @@
 #include "../renderer/renderer.h"
 #include "../renderer/predef_models.h"
+#include "../renderer/cam.h"
 #include "../utils/utils.h"
 #include <stdlib.h>
 #include <cglm/mat4.h>
@@ -10,12 +11,18 @@
 int main()
 {
 	GLFWwindow *window = init_and_create_window(800, 300, "test");
+	
+	sg_cam camera = SG_CAM_INIT;
+
+	glfwSetWindowUserPointer(window, &camera);
+
+	glfwSetCursorPosCallback(window, sg_cam_dir);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	GLfloat cube[] = SG_CUBE_VERTICES_INIT;
 	GLuint indices[] = SG_CUBE_INDICES_INIT;
-
 
 	GLuint vao, vbo, ebo;
 
@@ -48,30 +55,41 @@ int main()
 
 	glUniform1i(0, 1);
 
-	mat4 projection = GLM_MAT4_IDENTITY_INIT;
-	
-	glm_perspective(glm_rad(45.0f), 2, 0.1f, 100.0f, projection);
-	glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 	
 	glEnable(GL_DEPTH_TEST);
+	
+	float last_frame = 0.0f;
 	while(!glfwWindowShouldClose(window))
 	{
+		float current_frame = glfwGetTime();
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		sg_cam_move(window, &camera, 1.0f, current_frame - last_frame);
+
+		mat4 projection = GLM_MAT4_IDENTITY_INIT;
+		
+		int x, y;
+		glfwGetFramebufferSize(window, &x, &y);
+		glm_perspective(glm_rad(45.0f), (float)x / y, 0.1f, 100.0f, projection);
 
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		mat4 model = GLM_MAT4_IDENTITY_INIT;
 
-		glm_translate(view, (vec3){0.0f, 0.0f, -2.0f});
+		sg_cam_lookat(&camera, view);
 
 		glm_scale_uni(model, 0.5);
 		glm_rotate(model, glfwGetTime(), (vec3){0.0f, 1.0f, 0.0f});
 
+		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
 		glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
 
 		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
 		glfwPollEvents();
 		glfwSwapBuffers(window);
+		
+		last_frame = current_frame;
 	}
 
 	glfwTerminate();
