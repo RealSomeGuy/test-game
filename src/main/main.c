@@ -1,4 +1,5 @@
 #include "../renderer/renderer.h"
+#include "../renderer/predef_models.h"
 #include "../utils/utils.h"
 #include <stdlib.h>
 #include <cglm/mat4.h>
@@ -12,39 +13,30 @@ int main()
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-	float trig[] = 
-	{
-		//	x	y	z
-			 1.0f,	-1.0f,	0.0f,
-			-1.0f,	-1.0f,	0.0f,
-			 0.0f,	 1.0f,	0.0f,
-		//	r	g	b
-			 1.0f,	 0.0f,	 0.0f,
-			 0.0f,	 1.0f,	 0.0f,
-			 0.0f,	 0.0f, 	 1.0f,
-		//	s	t
-			1.0f,	0.0f,
-			0.0f,	0.0f,
-			0.5f,	0.5f
-	};
+	GLfloat cube[] = SG_CUBE_VERTICES_INIT;
+	GLuint indices[] = SG_CUBE_INDICES_INIT;
 
-	GLuint vao, vbo;
-	
+
+	GLuint vao, vbo, ebo;
+
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
+	glGenBuffers(1, &ebo);
 
 	glBindVertexArray(vao);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(trig), trig, GL_STATIC_DRAW);
-	
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube), cube, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
 	glEnableVertexAttribArray(0);
 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 9));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_NORMAL_OFFSET));
 	glEnableVertexAttribArray(1);
 
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 18));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_TEXTURE_OFFSET));
 	glEnableVertexAttribArray(2);
 
 	GLuint program = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
@@ -61,9 +53,10 @@ int main()
 	glm_perspective(glm_rad(45.0f), 2, 0.1f, 100.0f, projection);
 	glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 	
+	glEnable(GL_DEPTH_TEST);
 	while(!glfwWindowShouldClose(window))
 	{
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		mat4 model = GLM_MAT4_IDENTITY_INIT;
@@ -71,12 +64,12 @@ int main()
 		glm_translate(view, (vec3){0.0f, 0.0f, -2.0f});
 
 		glm_scale_uni(model, 0.5);
-		glm_rotate(model, glfwGetTime(), (vec3){0.0f, 0.0f, 1.0f});
+		glm_rotate(model, glfwGetTime(), (vec3){0.0f, 1.0f, 0.0f});
 
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
 		glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
 
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
