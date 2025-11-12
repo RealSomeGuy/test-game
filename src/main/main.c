@@ -49,7 +49,7 @@ int main()
 	GLuint program = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
 
 	glActiveTexture(GL_TEXTURE1);
-	GLuint g_tex = create_texture("assets/grass.png");
+	GLuint g_tex = create_texture("assets/container2.png");
 
 	glUseProgram(program);
 
@@ -65,7 +65,7 @@ int main()
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		sg_cam_move(window, &camera, 1.0f, current_frame - last_frame);
+		sg_cam_move(window, &camera, 3.0f, current_frame - last_frame);
 
 		mat4 projection = GLM_MAT4_IDENTITY_INIT;
 		
@@ -74,19 +74,24 @@ int main()
 		glm_perspective(glm_rad(45.0f), (float)x / y, 0.1f, 100.0f, projection);
 
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
-		mat4 model = GLM_MAT4_IDENTITY_INIT;
-
 		sg_cam_lookat(&camera, view);
-
-		glm_scale_uni(model, 0.5);
-		glm_rotate(model, glfwGetTime(), (vec3){0.0f, 1.0f, 0.0f});
 
 		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
-		glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
 
-		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
-		glfwPollEvents();
+		for(int i = 0; i < 10; i++)
+		{
+			for(int j = 0; j < 10; j++)
+			{
+				mat4 model = GLM_MAT4_IDENTITY_INIT;
+				glm_translate(model, (vec3){i, -2.0f, j});
+
+				glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
+
+				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+				glfwPollEvents();
+			}
+		}
 		glfwSwapBuffers(window);
 		
 		last_frame = current_frame;
