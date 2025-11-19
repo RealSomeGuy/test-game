@@ -94,7 +94,7 @@ int main()
 		glUniform3fv(4, 4, (float *)light_pos);
 
 		glUniform3fv(10, 1, (float *)(vec3){0.0f, -1.0f, -1.0f});
-		glUniform3fv(11, 1, (vec3){1.0f, 1.0f, 0.0f});
+		glUniform3fv(11, 1, (vec3){0.7f, 0.7f, 0.0f});
 		glUniform3fv(12, 1, (vec3){0.5f, 0.5f, 0.0f});
 		glUniform1i(13, 2);
 

@@ -15,6 +15,7 @@ layout(location = 0) uniform sampler2D e_tex;
 layout(location = 9) uniform sampler2D s_tex;
 layout(location = 10) uniform directional_light dir_light;
 layout(location = 13) uniform sampler2D emission;
+layout(location = 2) uniform mat4 view;
 
 in vec3 obj_pos;
 in vec3 normal_vec;
@@ -47,7 +48,7 @@ vec3 calc_point_light()
 		
 vec3 calc_dir_light()
 {
-	vec3 light_pos = normalize(-dir_light.direction);
+	vec3 light_pos = normalize(vec3(view * vec4(-dir_light.direction, 0.0f))); 
 	vec3 view_dir = normalize(-obj_pos);
 
 	float diff_strength = max(dot(light_pos, normal_vec), 0.0f);
@@ -57,8 +58,7 @@ vec3 calc_dir_light()
 	vec3 diff = dir_light.diffuse * diff_strength * diffuse;
 	vec3 spec = dir_light.specular * spec_strength * specular;
 
-	return (0.25f * dir_light.diffuse * diffuse + diff * diffuse + 
-		spec_strength * dir_light.specular * specular);
+	return (0.25f * dir_light.diffuse * diffuse + diff + spec);
 }
 
 vec3 calc_spotlight()
@@ -81,5 +81,5 @@ vec3 calc_spotlight()
 
 void main()
 {
-	outcol = vec4(calc_point_light() + calc_spotlight(), 1.0f);
+	outcol = vec4(calc_point_light() + calc_spotlight() + calc_dir_light(), 1.0f);
 }
