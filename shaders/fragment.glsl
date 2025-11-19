@@ -63,27 +63,23 @@ vec3 calc_dir_light()
 
 vec3 calc_spotlight()
 {
-	vec3 emit = texture(emission, tex_xy).rgb;
+	//by OGL convention
 	vec3 cam_front = {0.0f, 0.0f, -1.0f};
+
 	vec3 light_dir = normalize(-obj_pos);
-	
-	float cos_theta = dot(light_dir, -cam_front);
-	float intensity = (cos_theta - 0.93969f) / 0.0262332f; //this is normalization
-	intensity = clamp(intensity, 0.0f, 1.0f);
+	float theta = dot(light_dir, -cam_front);
+	float intensity = clamp((theta - 0.9063078f) / 0.0596180f, 0.0f, 1.0f);
 
 	float diff_strength = max(dot(light_dir, normal_vec), 0.0f);
-	float spec_strength = pow(max(dot(reflect(-light_dir, normal_vec), light_dir), 0.0f),
-				  512.0f);
-	
+	float spec_strength = pow(max(dot(reflect(-light_dir, normal_vec), light_dir), 0.0f), 512.0f);
 	float d = length(-obj_pos);
-	float attenuation = 1.0f / (0.20f * d * d + 0.22f * d + 1.0f);
 
-	return intensity * attenuation * (0.5f * diffuse + emit * diff_strength * diffuse + 
-			spec_strength * specular);
-
+	float attenuation = 1.0f / (0.20 * d * d + 0.22f * d + 1.0f);
+	
+	return intensity * attenuation * (0.25f * diffuse + diff_strength * texture(emission, tex_xy).rgb * diffuse + spec_strength * specular);
 }
 
 void main()
 {
-	outcol = vec4(calc_point_light() +  calc_spotlight(), 1.0f);
+	outcol = vec4(calc_point_light() + calc_spotlight(), 1.0f);
 }
