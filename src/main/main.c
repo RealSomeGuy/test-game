@@ -9,6 +9,16 @@
 #include <cglm/cam.h>
 #include <cglm/io.h>
 
+vec3 *cam_vec = NULL;
+int compare_vec(const void *a, const void *b)
+{
+	
+	float mag = glm_vec3_distance(a, *cam_vec);
+	float mag2 = glm_vec3_distance(b, *cam_vec);
+
+	return (mag < mag2) - (mag > mag2);
+}
+
 int main()
 {
 	GLFWwindow *window = init_and_create_window(800, 300, "test");
@@ -47,96 +57,124 @@ int main()
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_TEXTURE_OFFSET));
 	glEnableVertexAttribArray(2);
 
-	GLuint program = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
-	GLuint light_prog = create_shader_program("shaders/light_vert.glsl", "shaders/light_frag.glsl");
-
-	glActiveTexture(GL_TEXTURE1);
-	GLuint g_tex = create_texture("assets/container2.png");
-	glActiveTexture(GL_TEXTURE0);
-	GLuint g_spec = create_texture("assets/container2_specular.png");
-	glActiveTexture(GL_TEXTURE2);
-	GLuint g_emit = create_texture("assets/matrix.jpg");
-
-	glEnable(GL_DEPTH_TEST);
-
-	vec3 light_pos[4];
-	for(int i = 0; i < 4; i++)
+	GLfloat quad[] = 
 	{
-		light_pos[i][0] = i;
-		light_pos[i][1] = 3.0f;
-		light_pos[i][2] = i * i;
+		-0.5f, -0.5f, 0.0f,
+		-0.5f, 0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		 0.5,	0.5,  0.0f,
+
+		 0.0f, 0.0f,
+		 0.0f, 1.0f,
+		 1.0f, 0.0f,
+		 1.0f, 1.0f
+	};
+
+	GLuint quad_ind[] =
+	{
+		0, 1, 2, 1, 3, 2
+	};
+
+	GLuint qvao, qvbo, qebo;
+	glGenVertexArrays(1, &qvao);
+	glGenBuffers(1, &qvbo);
+	glGenBuffers(1, &qebo);
+
+	glBindVertexArray(qvao);
+	glBindBuffer(GL_ARRAY_BUFFER, qvbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, qebo);
+
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_ind), quad_ind, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 12));
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+
+	GLuint prog = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
+	GLuint tshader = create_shader_program("shaders/outvert.glsl", "shaders/outfrag.glsl");
+
+	GLuint tex = create_texture("assets/container2.png");
+	glActiveTexture(GL_TEXTURE1);
+
+	GLuint tex2 = create_texture("assets/transparent_window.png");
+
+	vec3 glass_pos[5];
+
+	for(int i = 0; i < 5; i++)
+	{
+		glass_pos[i][0] = 0.0f;
+		glass_pos[i][1] = -0.9f;
+		glass_pos[i][2] = i + 0.5f;
 	}
-	
+
+	cam_vec = &camera.camera_pos;
+
+	glDepthFunc(GL_LESS);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	float last_frame = 0.0f;
 	while(!glfwWindowShouldClose(window))
 	{
+		glEnable(GL_DEPTH_TEST);
 		float current_frame = glfwGetTime();
 
+		glBindVertexArray(vao);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		glUseProgram(prog);
 		sg_cam_move(window, &camera, 3.0f, current_frame - last_frame);
 
 		mat4 projection = GLM_MAT4_IDENTITY_INIT;
+		mat4 view;
+		mat4 model = GLM_MAT4_IDENTITY_INIT;
+
+		int width, height;
+		glfwGetFramebufferSize(window, &width, &height);
+		glm_perspective(glm_rad(45.0f), (float)width / height, 0.1f, 100.0f, projection);
 		
-		glUseProgram(program);
-		glUniform1i(0, 1);
-
-		int x, y;
-		glfwGetFramebufferSize(window, &x, &y);
-		glm_perspective(glm_rad(45.0f), (float)x / y, 0.1f, 100.0f, projection);
-
-		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		sg_cam_lookat(&camera, view);
-
+		
 		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
 
-		glUniform3fv(4, 4, (float *)light_pos);
+		glm_translate(model, (vec3){0.0f, -2.0f, 0.0f});
+		glm_scale(model, (vec3){15.0f, 0.2f, 15.0f});
+		glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
 
-		glUniform3fv(10, 1, (float *)(vec3){0.0f, -1.0f, -1.0f});
-		glUniform3fv(11, 1, (vec3){0.7f, 0.7f, 0.0f});
-		glUniform3fv(12, 1, (vec3){0.5f, 0.5f, 0.0f});
-		glUniform1i(13, 2);
 
-		for(int i = 0; i < 30; i++)
+		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+
+		glBindVertexArray(qvao);
+		glUseProgram(tshader);
+
+		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
+		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
+		glUniform1i(4, 1);
+
+		glDisable(GL_DEPTH_TEST);
+		qsort(glass_pos, 5, 3 * sizeof(float), compare_vec);
+
+		for(int i = 0; i < 5; i++)
 		{
-			for(int j = 0; j < 30; j++)
-			{
-				mat4 model = GLM_MAT4_IDENTITY_INIT;
-				glm_translate(model, (vec3){i, -2.0f, j});
+			glm_mat4_identity(model);
 
-				mat4 norm_mat;
-				glm_mat4_mul(view, model, norm_mat);
-				glm_mat4_inv(norm_mat, norm_mat);
-				glm_mat4_transpose(norm_mat);
+			glm_translate(model, glass_pos[i]);
+			glm_scale_uni(model, 2.0f);
 
-				glUniformMatrix4fv(8, 1, GL_FALSE, (float *)norm_mat);
-				glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
-
-				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
-			}
-		}
-
-		glUseProgram(light_prog);
-
-		glUniformMatrix4fv(0, 1, GL_FALSE, (float *)projection);
-		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)view);
-		glUniform4fv(3, 1, (float[]){1.0f, 1.0f, 1.0f, 1.0f});
-
-		for(int i = 0; i < 4; i++)
-		{
-			mat4 model = GLM_MAT4_IDENTITY_INIT;
-			glm_translate(model, light_pos[i]);
-			glm_scale_uni(model, 0.25f);
+			glUniformMatrix4fv(3, 1, GL_FALSE, (float *) model);
 			
-			glUniformMatrix4fv(2, 1, GL_FALSE, (float *)model);
-			glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+			glDrawElements(GL_TRIANGLES, sizeof(quad_ind) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
 		}
 
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-		
 		last_frame = current_frame;
+
+		glfwPollEvents();
+		glfwSwapBuffers(window);
 	}
 
 	glfwTerminate();

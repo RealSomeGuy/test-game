@@ -1,11 +1,11 @@
 #version 430 core
 
+
 layout(location = 4) uniform sampler2D tex;
 
 in vec2 tex_xy;
-out vec4 outcol;
-
+out vec4 col;
 void main()
 {
-	outcol = texture(tex, tex_xy);
+	col = texture(tex, tex_xy);
 }
