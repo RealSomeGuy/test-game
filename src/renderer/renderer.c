@@ -140,5 +140,6 @@ GLuint create_texture(const char *texpath)
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(data);
+	return texture;
 }
 

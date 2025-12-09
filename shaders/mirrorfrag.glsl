@@ -1,11 +1,10 @@
 #version 430 core
 
+in vec2 tex_coord;
 layout(location = 3) uniform sampler2D tex;
 
-in vec2 tex_xy;
-out vec4 outcol;
-
+out vec4 color;
 void main()
 {
-	outcol = texture(tex, tex_xy);
+	color = texture(tex, tex_coord);
 }

@@ -28,6 +28,27 @@ void sg_cam_dir(GLFWwindow *window, double xpos, double ypos)
 	glm_vec3_normalize(cam->camera_front);
 }
 
+void sg_process_cam(sg_cam *cam, float xoffset, float yoffset, int clamp_pitch)
+{
+	cam->pitch += yoffset * cam->sensitivity; 
+	cam->yaw += xoffset * cam->sensitivity;
+
+	if(clamp_pitch)
+	{
+		if(cam->pitch > 89.0f)
+			cam->pitch = 89.0f;
+		else if(cam->pitch < -89.0f)
+			cam->pitch = -89.0f;
+	}
+
+	cam->camera_front[0] = cos(glm_rad(cam->yaw)) * cos(glm_rad(cam->pitch));
+	cam->camera_front[1] = sin(glm_rad(cam->pitch));
+	cam->camera_front[2] = sin(glm_rad(cam->yaw)) * cos(glm_rad(cam->pitch));
+
+
+	glm_vec3_normalize(cam->camera_front);
+}
+
 void sg_cam_move(GLFWwindow *window, sg_cam *cam, float speed, float delta_time)
 {
 	vec3 direction = GLM_VEC3_ZERO_INIT;

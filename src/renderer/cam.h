@@ -28,6 +28,7 @@ typedef struct
 
 void sg_cam_dir(GLFWwindow *window, double xpos, double ypos);
 void sg_cam_move(GLFWwindow *window, sg_cam *cam, float speed, float delta_time);
+void sg_process_cam(sg_cam *cam, float xoffset, float yoffset, int clamp_pitch);
 
 static FORCE_INLINE void sg_cam_lookat(sg_cam *cam, mat4 view)
 {

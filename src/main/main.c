@@ -3,21 +3,12 @@
 #include "../renderer/cam.h"
 #include "../utils/utils.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <cglm/mat4.h>
 #include <cglm/affine.h>
 #include <cglm/util.h>
 #include <cglm/cam.h>
 #include <cglm/io.h>
-
-vec3 *cam_vec = NULL;
-int compare_vec(const void *a, const void *b)
-{
-	
-	float mag = glm_vec3_distance(a, *cam_vec);
-	float mag2 = glm_vec3_distance(b, *cam_vec);
-
-	return (mag < mag2) - (mag > mag2);
-}
 
 int main()
 {
@@ -30,7 +21,7 @@ int main()
 	glfwSetCursorPosCallback(window, sg_cam_dir);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glfwSwapInterval(0);
 
 	GLfloat cube[] = SG_CUBE_VERTICES_INIT;
 	GLuint indices[] = SG_CUBE_INDICES_INIT;
@@ -49,133 +40,168 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
-	glEnableVertexAttribArray(0);
-
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_NORMAL_OFFSET));
-	glEnableVertexAttribArray(1);
-
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_TEXTURE_OFFSET));
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 
-	GLfloat quad[] = 
-	{
-		-0.5f, -0.5f, 0.0f,
-		-0.5f, 0.5f, 0.0f,
-		 0.5f, -0.5f, 0.0f,
-		 0.5,	0.5,  0.0f,
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
 
-		 0.0f, 0.0f,
-		 0.0f, 1.0f,
-		 1.0f, 0.0f,
-		 1.0f, 1.0f
-	};
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	GLuint quad_ind[] =
-	{
-		0, 1, 2, 1, 3, 2
-	};
+	GLuint color_attach;
+	glGenTextures(1, &color_attach);
 
-	GLuint qvao, qvbo, qebo;
-	glGenVertexArrays(1, &qvao);
-	glGenBuffers(1, &qvbo);
-	glGenBuffers(1, &qebo);
+	glBindTexture(GL_TEXTURE_2D, color_attach);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
-	glBindVertexArray(qvao);
-	glBindBuffer(GL_ARRAY_BUFFER, qvbo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, qebo);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quad_ind), quad_ind, GL_STATIC_DRAW);
+	GLuint rbo;
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *) 0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void *) (sizeof(float) * 12));
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
 
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_attach, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		LOG("ERROR - FRAMEBUFFER NOT COMPLETE\n");
+
+	GLuint mirror_fbo;
+	glGenFramebuffers(1, &mirror_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, mirror_fbo);
+
+	GLuint mirror_tex;
+	glGenTextures(1, &mirror_tex);
+	glBindTexture(GL_TEXTURE_2D, mirror_tex);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	GLuint m_rbo;
+
+	glGenRenderbuffers(1, &m_rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_rbo);
+	
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mirror_tex, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_rbo);
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		LOG("ERROR - FRAMEBUFFER NOT COMPLETE\n");
 
 	GLuint prog = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
-	GLuint tshader = create_shader_program("shaders/outvert.glsl", "shaders/outfrag.glsl");
+	GLuint fbo_prog = create_shader_program("shaders/outvert.glsl", "shaders/outfrag.glsl");
 
 	GLuint tex = create_texture("assets/container2.png");
-	glActiveTexture(GL_TEXTURE1);
 
-	GLuint tex2 = create_texture("assets/transparent_window.png");
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-	vec3 glass_pos[5];
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
 
-	for(int i = 0; i < 5; i++)
-	{
-		glass_pos[i][0] = 0.0f;
-		glass_pos[i][1] = -0.9f;
-		glass_pos[i][2] = i + 0.5f;
-	}
-
-	cam_vec = &camera.camera_pos;
-
-	glDepthFunc(GL_LESS);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	float last_frame = 0.0f;
+	float current_frame, delta, last_frame = 0.0f;
 	while(!glfwWindowShouldClose(window))
 	{
-		glEnable(GL_DEPTH_TEST);
-		float current_frame = glfwGetTime();
+		current_frame = glfwGetTime();
+		delta = current_frame - last_frame;
+		last_frame = current_frame; 
 
-		glBindVertexArray(vao);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		char fps[24];
+		snprintf(fps, 24, "%.4fms %.2ffps", delta * 1000, 1.0f / delta);
+		glfwSetWindowTitle(window, fps);
 
+		glBindTexture(GL_TEXTURE_2D, tex);
 		glUseProgram(prog);
-		sg_cam_move(window, &camera, 3.0f, current_frame - last_frame);
+		glEnable(GL_DEPTH_TEST);
 
 		mat4 projection = GLM_MAT4_IDENTITY_INIT;
-		mat4 view;
-		mat4 model = GLM_MAT4_IDENTITY_INIT;
+
+		sg_cam_move(window, &camera, 3.0f, delta);
 
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
 		glm_perspective(glm_rad(45.0f), (float)width / height, 0.1f, 100.0f, projection);
+
+		glUniformMatrix4fv(0, 1, GL_FALSE, (float *) projection);
 		
+		glBindFramebuffer(GL_FRAMEBUFFER, mirror_fbo);
+
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+		mat4 view;
+		camera.yaw += 180.0f;
+		sg_process_cam(&camera, 0, 0, 0);
 		sg_cam_lookat(&camera, view);
-		
-		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
-		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
 
-		glm_translate(model, (vec3){0.0f, -2.0f, 0.0f});
-		glm_scale(model, (vec3){15.0f, 0.2f, 15.0f});
-		glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
-
-
-		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
-
-		glBindVertexArray(qvao);
-		glUseProgram(tshader);
-
-		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
-		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
-		glUniform1i(4, 1);
-
-		glDisable(GL_DEPTH_TEST);
-		qsort(glass_pos, 5, 3 * sizeof(float), compare_vec);
-
-		for(int i = 0; i < 5; i++)
+		glUniformMatrix4fv(1, 1, GL_FALSE, (float *) view);
+		for(int i = 0; i < 10; i++)
 		{
-			glm_mat4_identity(model);
+			for(int j = 0; j < 10; j++)
+			{
+				mat4 model = GLM_MAT4_IDENTITY_INIT;
+				glm_translate(model, (vec3){i, -2.0f, j});
 
-			glm_translate(model, glass_pos[i]);
-			glm_scale_uni(model, 2.0f);
-
-			glUniformMatrix4fv(3, 1, GL_FALSE, (float *) model);
-			
-			glDrawElements(GL_TRIANGLES, sizeof(quad_ind) / sizeof(GLuint), GL_UNSIGNED_INT, 0);
+				glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+			}
 		}
 
-		last_frame = current_frame;
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+		camera.yaw -= 180.0f;
+		sg_process_cam(&camera, 0, 0, 1);
+		sg_cam_lookat(&camera, view);
+		glUniformMatrix4fv(1, 1, GL_FALSE, (float *) view);
+		for(int i = 0; i < 10; i++)
+		{
+			for(int j = 0; j < 10; j++)
+			{
+				mat4 model = GLM_MAT4_IDENTITY_INIT;
+				glm_translate(model, (vec3){i, -1.0f, j});
+
+				glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+			}
+		}
+
+		glBindTexture(GL_TEXTURE_2D, mirror_tex);
+
+		mat4 model = GLM_MAT4_IDENTITY_INIT;
+		glm_translate(model, (vec3){5.0f, 0.0f, 5.0f});
+
+		glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDisable(GL_DEPTH_TEST);
+		
+		glBindTexture(GL_TEXTURE_2D, color_attach);
+		glUseProgram(fbo_prog);
+		
+		glUniform2fv(1, 1, (vec2){width, height});
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		glfwPollEvents();
 		glfwSwapBuffers(window);
 	}
+
 
 	glfwTerminate();
 	return 0;
