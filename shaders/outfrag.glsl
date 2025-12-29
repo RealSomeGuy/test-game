@@ -8,6 +8,7 @@ in vec2 tex_xy;
 out vec4 col;
 void main()
 {
+	/*
 	const vec2 pixel_size = vec2(1.0f / scr_size.x, 1.0f / scr_size.y);
 
 	vec2 pixels[9] = 
@@ -34,6 +35,9 @@ void main()
 
 	for(int i = 0; i < 9; i++)
 		sample_tex += texture(tex, tex_xy + pixels[i]).rgb * kernel[i];
+	*/
+
+	vec3 sample_tex = texture(tex, tex_xy).rgb;
 
 	col = vec4(sample_tex, 1.0f);
 }

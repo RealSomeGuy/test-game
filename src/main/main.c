@@ -9,6 +9,17 @@
 #include <cglm/util.h>
 #include <cglm/cam.h>
 #include <cglm/io.h>
+#include <stb_image.h>
+
+const char *cubemap_paths[6] = 
+{
+	"assets/cubemap/skybox/right.jpg",
+	"assets/cubemap/skybox/left.jpg",
+	"assets/cubemap/skybox/top.jpg",
+	"assets/cubemap/skybox/bottom.jpg",
+	"assets/cubemap/skybox/front.jpg",
+	"assets/cubemap/skybox/back.jpg"
+};
 
 int main()
 {
@@ -105,8 +116,33 @@ int main()
 
 	GLuint prog = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
 	GLuint fbo_prog = create_shader_program("shaders/outvert.glsl", "shaders/outfrag.glsl");
+	GLuint cube_prog = create_shader_program("shaders/cubevert.glsl", "shaders/cubefrag.glsl");
 
 	GLuint tex = create_texture("assets/container2.png");
+
+	GLuint cubemap;
+	glGenTextures(1, &cubemap);
+
+	glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+
+	for(int i = 0; i < 6; i++)
+	{
+		stbi_set_flip_vertically_on_load(0);
+		
+		int x, y, n;
+		uint8_t *data = stbi_load(cubemap_paths[i], &x, &y, &n, 4);
+
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+		stbi_image_free(data);
+	}
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -114,6 +150,7 @@ int main()
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	glDepthFunc(GL_LEQUAL);
 	float current_frame, delta, last_frame = 0.0f;
 	while(!glfwWindowShouldClose(window))
 	{
@@ -142,6 +179,7 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER, mirror_fbo);
 
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		glEnable(GL_CULL_FACE);
 
 		mat4 view;
 		camera.yaw += 180.0f;
@@ -149,14 +187,20 @@ int main()
 		sg_cam_lookat(&camera, view);
 
 		glUniformMatrix4fv(1, 1, GL_FALSE, (float *) view);
+		glUniform3fv(6, 1, camera.camera_pos);
 		for(int i = 0; i < 10; i++)
 		{
 			for(int j = 0; j < 10; j++)
 			{
 				mat4 model = GLM_MAT4_IDENTITY_INIT;
+				mat4 norm_mat = GLM_MAT4_IDENTITY_INIT;
 				glm_translate(model, (vec3){i, -2.0f, j});
 
+				glm_mat4_inv(model, norm_mat);
+				glm_mat4_transpose(norm_mat);
+
 				glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+				glUniformMatrix4fv(4, 1, GL_FALSE, (float *) norm_mat);
 				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
 			}
 		}
@@ -167,15 +211,22 @@ int main()
 		camera.yaw -= 180.0f;
 		sg_process_cam(&camera, 0, 0, 1);
 		sg_cam_lookat(&camera, view);
+
 		glUniformMatrix4fv(1, 1, GL_FALSE, (float *) view);
+		glUniform3fv(6, 1, camera.camera_pos);
 		for(int i = 0; i < 10; i++)
 		{
 			for(int j = 0; j < 10; j++)
 			{
 				mat4 model = GLM_MAT4_IDENTITY_INIT;
-				glm_translate(model, (vec3){i, -1.0f, j});
+				mat4 norm_mat = GLM_MAT4_IDENTITY_INIT;
+				glm_translate(model, (vec3){i, -2.0f, j});
+
+				glm_mat4_inv(model, norm_mat);
+				glm_mat4_transpose(norm_mat);
 
 				glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+				glUniformMatrix4fv(4, 1, GL_FALSE, (float *) norm_mat);
 				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
 			}
 		}
@@ -186,6 +237,14 @@ int main()
 		glm_translate(model, (vec3){5.0f, 0.0f, 5.0f});
 
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *) model);
+		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+
+		glDisable(GL_CULL_FACE);
+
+		glUseProgram(cube_prog);
+		glUniformMatrix4fv(0, 1, GL_FALSE, (float *) projection);
+		glUniformMatrix4fv(1, 1, GL_FALSE, (float *) view);
+
 		glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
