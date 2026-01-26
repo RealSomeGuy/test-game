@@ -47,8 +47,8 @@ int main()
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void *) (SG_CUBE_TEXTURE_OFFSET));
 	glEnableVertexAttribArray(2);
 
-	GLuint program = create_shader_program("shaders/vertex.glsl", "shaders/fragment.glsl");
-	GLuint light_prog = create_shader_program("shaders/light_vert.glsl", "shaders/light_frag.glsl");
+	GLuint program = create_program("shaders/vertex.glsl", "shaders/fragment.glsl", NULL);
+	GLuint light_prog = create_program("shaders/light_vert.glsl", "shaders/light_frag.glsl", NULL);
 
 	glActiveTexture(GL_TEXTURE1);
 	GLuint g_tex = create_texture("assets/container2.png");
@@ -66,7 +66,49 @@ int main()
 		light_pos[i][1] = 3.0f;
 		light_pos[i][2] = i * i;
 	}
+
+	mat4 *model = malloc(sizeof(mat4) * 90000);
+	int index = 0;
+
+	for(int i = 0; i < 300; i++)
+	{
+		for(int j = 0; j < 300; j++)
+		{
+			glm_mat4_identity(model[index]);
+			glm_translate(model[index], (vec3){i, -2.0f, j});
+
+			index++;
+		}
+	}
+
+
+	GLuint instancevbo;
+
+	glGenBuffers(1, &instancevbo);
+	glBindBuffer(GL_ARRAY_BUFFER, instancevbo);
+	glBufferData(GL_ARRAY_BUFFER, 90000 * sizeof(mat4), model, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float), (void *)0);
+	glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float), (void *) (4 * sizeof(float)));
+	glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float), (void *) (8 * sizeof(float)));
+	glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 16 * sizeof(float), (void *) (12 * sizeof(float)));
+
+	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
+	glEnableVertexAttribArray(5);
+	glEnableVertexAttribArray(6);
+
+	glVertexAttribDivisor(3, 1);
+	glVertexAttribDivisor(4, 1);
+	glVertexAttribDivisor(5, 1);
+	glVertexAttribDivisor(6, 1);
+
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CCW);
+
+	glfwSwapInterval(0);
 	
+	glEnable(GL_MULTISAMPLE);
 	float last_frame = 0.0f;
 	while(!glfwWindowShouldClose(window))
 	{
@@ -90,6 +132,7 @@ int main()
 
 		glUniformMatrix4fv(1, 1, GL_FALSE, (float *)projection);
 		glUniformMatrix4fv(2, 1, GL_FALSE, (float *)view);
+		
 
 		glUniform3fv(4, 4, (float *)light_pos);
 
@@ -98,24 +141,7 @@ int main()
 		glUniform3fv(12, 1, (vec3){0.5f, 0.5f, 0.0f});
 		glUniform1i(13, 2);
 
-		for(int i = 0; i < 30; i++)
-		{
-			for(int j = 0; j < 30; j++)
-			{
-				mat4 model = GLM_MAT4_IDENTITY_INIT;
-				glm_translate(model, (vec3){i, -2.0f, j});
-
-				mat4 norm_mat;
-				glm_mat4_mul(view, model, norm_mat);
-				glm_mat4_inv(norm_mat, norm_mat);
-				glm_mat4_transpose(norm_mat);
-
-				glUniformMatrix4fv(8, 1, GL_FALSE, (float *)norm_mat);
-				glUniformMatrix4fv(3, 1, GL_FALSE, (float *)model);
-
-				glDrawElements(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0);
-			}
-		}
+		glDrawElementsInstanced(GL_TRIANGLES, SG_CUBE_INDEX_COUNT, GL_UNSIGNED_INT, 0, 90000);
 
 		glUseProgram(light_prog);
 
@@ -138,6 +164,8 @@ int main()
 		
 		last_frame = current_frame;
 	}
+
+	free(model);
 
 	glfwTerminate();
 	return 0;

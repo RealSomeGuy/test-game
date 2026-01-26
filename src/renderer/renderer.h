@@ -9,6 +9,6 @@ GLuint create_texture(const char *texpath);
 
 GLFWwindow *init_and_create_window(int x, int y, const char *title);
 
-GLuint create_shader_program(const char *vertex_path, const char *fragment_path);
+GLuint create_program(const char *vertex_path, const char *fragment_path, const char *geo_path);
 
 #endif

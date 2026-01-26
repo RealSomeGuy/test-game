@@ -22,6 +22,7 @@ GLFWwindow *init_and_create_window(int x, int y, const char *title)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_SAMPLES, 8);
 
 
 	GLFWwindow *window = glfwCreateWindow(x, y, title, NULL, NULL);
@@ -40,81 +41,84 @@ GLFWwindow *init_and_create_window(int x, int y, const char *title)
 	return window;
 }
 
-static const char *type_to_str(GLenum type)
+FORCE_INLINE const char *get_shader_type(GLenum shader_type)
 {
-	switch(type)
+	switch(shader_type)
 	{
 	case GL_VERTEX_SHADER:
 		return "VERTEX_SHADER";
 	case GL_FRAGMENT_SHADER:
 		return "FRAGMENT_SHADER";
+	case GL_GEOMETRY_SHADER:
+		return "GEOMETRY_SHADER";
 	default:
-		return "UNKNOWN SHADER";
+		"UNKNOWN SHADER";
 	}
 }
 
-static GLuint compile_shader(char *src, GLenum shader_type)
+static GLuint create_shader(GLenum shader_type, const char *shader_source)
 {
 	GLuint shader = glCreateShader(shader_type);
 
-	glShaderSource(shader, 1, (const char **) &src, NULL);
+	FILE *fp = fopen(shader_source, "r");
+	char *str = read_file(fp);
 
+	glShaderSource(shader, 1, (const char **)&str, NULL);
 	glCompileShader(shader);
+
+	free(str);
 
 	int success;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-
+	
 	if(!success)
 	{
-		char log[1024];
-		glGetShaderInfoLog(shader, 1024, NULL, log);
+		char log[512];
+		glGetShaderInfoLog(shader, 512, NULL, log);
 
-		LOG("[%s COMPILE ERROR] - %s\n", type_to_str(shader_type), log);
+		LOG("[%s ERROR] %s\n", get_shader_type(shader_type), log);
 	}
-
+	
+	fclose(fp);
 	return shader;
 }
 
-
-GLuint create_shader_program(const char *vertex_path, const char *fragment_path)
+GLuint create_program(const char *vertex_path, const char *fragment_path, const char *geo_path)
 {
-	FILE *fp = fopen(vertex_path, "r");
-
-	char *shader_src = read_file(fp);
-	
-	GLuint vertex = compile_shader(shader_src, GL_VERTEX_SHADER);
-	free(shader_src);
-
-	fclose(fp);
-	fp = fopen(fragment_path, "r");
-
-	shader_src = read_file(fp);
-
-	GLuint fragment = compile_shader(shader_src, GL_FRAGMENT_SHADER);
-	free(shader_src);
-
-	fclose(fp);
-
 	GLuint program = glCreateProgram();
+
+	GLuint vertex = create_shader(GL_VERTEX_SHADER, vertex_path);
+	GLuint fragment = create_shader(GL_FRAGMENT_SHADER, fragment_path);
+
+	GLuint geometry;
+
+	if(geo_path)
+	{
+		geometry = create_shader(GL_GEOMETRY_SHADER, geo_path);
+		glAttachShader(program, geometry);
+	}
 
 	glAttachShader(program, vertex);
 	glAttachShader(program, fragment);
 
 	glLinkProgram(program);
+	
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+
+	if(geo_path)
+		glDeleteShader(geometry);
 
 	int success;
 	glGetProgramiv(program, GL_LINK_STATUS, &success);
-
+	
 	if(!success)
 	{
-		char log[1024];
+		char log[512];
+		glGetProgramInfoLog(program, 512, NULL, log);
 
-		glGetProgramInfoLog(program, 1024, NULL, log);
-		LOG("[PROGRAM LINK ERROR] - %s\n", log);
+		LOG("[SHADER PROGRAM LINK ERROR] %s\n", log);
 	}
-
-	glDeleteShader(vertex);
-	glDeleteShader(fragment);
 
 	return program;
 }
